@@ -5,6 +5,9 @@ import re
 from bs4 import BeautifulSoup
 import xlwt
 import sqlite3
+import json
+from simple_salesforce import Salesforce
+sf = Salesforce(username='13544205142@sina.cn', password='1qaz2wsx3edc', security_token='')
 
 findLink = re.compile(r'<a href="(.*?)">') #创建正则表达式对象,表示规则(字符串模式) r忽视所有的空格符合 .表示一个字符 *0个或多个字符 ？表示重复前面内容的0次或一次，也就是要么不出现，要么出现一次
 findImgSrc = re.compile(r'<img.*src="(.*?)"',re.S) #加上re.S表示忽视换行符
@@ -25,7 +28,9 @@ def main():
 
     dbpath = 'movie.db'
 
-    saveDataToDB(dataList,dbpath)
+    # saveDataToDB(dataList,dbpath)
+
+    saveDatatoSF(dataList)
 
 # 爬取网页
 def getData(baseUrl):
@@ -153,6 +158,36 @@ def init_db(dbpath):
     cursor.execute(sql)
     conn.commit()
     conn.close()
+
+def saveDatatoSF(dataList):
+    upsertDatas = []
+    for data in dataList:
+        obj = {"info_link__c": "", "pic_link__c": "", "cname__c": "", "name": "", "ename__c": "", "score__c": 0,"rated__c": 0, "instro__c": "", "info__c": ""}
+        for index in range(len(data)):
+            detail = data[index]
+            print('index=%s value=%s' %(index,detail))
+            if detail is None:
+                continue
+            if(index==0):
+                obj['info_link__c'] = detail
+            elif (index==1):
+                obj['pic_link__c'] = detail
+            elif (index==2):
+                obj['cname__c'] = detail
+                obj['name'] = detail
+            elif (index==3):
+                obj['ename__c'] = detail
+            elif (index==4):
+                obj['score__c'] = detail
+            elif (index==5):
+                obj['rated__c'] = detail
+            elif (index==6):
+                obj['instro__c'] = detail
+            elif (index==7):
+                obj['info__c'] = detail
+        upsertDatas.append(obj)
+
+    sf.bulk.Movie__c.upsert(upsertDatas, 'cname__c', batch_size=10000, use_serial=True)
 
 if __name__ == '__main__':
     main()
