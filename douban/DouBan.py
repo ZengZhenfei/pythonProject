@@ -4,6 +4,7 @@ import urllib.parse
 import re
 from bs4 import BeautifulSoup
 import xlwt
+import sqlite3
 
 findLink = re.compile(r'<a href="(.*?)">') #创建正则表达式对象,表示规则(字符串模式) r忽视所有的空格符合 .表示一个字符 *0个或多个字符 ？表示重复前面内容的0次或一次，也就是要么不出现，要么出现一次
 findImgSrc = re.compile(r'<img.*src="(.*?)"',re.S) #加上re.S表示忽视换行符
@@ -20,7 +21,11 @@ def main():
 
     savePath = 'top250.xls'
 
-    saveData(dataList,savePath)
+    # saveData(dataList,savePath)
+
+    dbpath = 'movie.db'
+
+    saveDataToDB(dataList,dbpath)
 
 # 爬取网页
 def getData(baseUrl):
@@ -107,7 +112,49 @@ def saveData(dataList,savePath):
 
     workbook.save(savePath)  # 保存数据表
 
+def saveDataToDB(dataList,dbpath):
+    init_db(dbpath)
+    conn = sqlite3.connect(dbpath)
+    cur = conn.cursor()
+
+    for data in dataList:
+        for index in range(len(data)):
+            if index == 4 or index == 5:
+                continue
+            data[index] = '"'+data[index]+'"'
+
+        sql = '''
+            insert into movie250(
+                info_link,pic_link,cname,ename,score,rated,instro,info 
+            )
+            values(%s)'''%",".join(data)
+        print(sql)
+        cur.execute(sql)
+        conn.commit()
+    cur.close()
+    conn.close()
+
+def init_db(dbpath):
+    sql = '''
+        create table movie250(
+            id integer primary key autoincrement,
+            info_link text,
+            pic_link text,
+            cname varchar,
+            ename varchar,
+            score numeric,
+            rated numeric,
+            instro text,
+            info text
+        )
+    ''' #创建数据表
+    conn = sqlite3.connect(dbpath)
+    cursor = conn.cursor()
+    cursor.execute(sql)
+    conn.commit()
+    conn.close()
 
 if __name__ == '__main__':
     main()
+    # init_db("movietest.db")
     print("爬取完毕")
